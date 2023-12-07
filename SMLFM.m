@@ -38,21 +38,21 @@ addpath('lib')
 
 type_mla     = 'hexagonal'; % 'hexagonal' or 'square'
 locs_format  = 'Peakfit'; % 'Peakfit', 'Thunderstorm', 'Picasso'
-NA           = 1.27; % numerical aperture of objective
-nImmersion   = 1.33; % immersion refractive index
+NA           = 1.49; % numerical aperture of objective
+nImmersion   = 1.518; % immersion refractive index
 nMedium      = 1.33; % specimen/medium refractive index
-f_obj        = 200/60; % in mm
+f_obj        = 200/100; % in mm
 f_FourierLens= 175; % in mm
 f_TubeLens   = 200; % in mm
-f_MLA        = 175; % in mm
-lens_pitch   = 2390; % in microns
-pixel_size   = 16; % camera pixel size in microns
+f_MLA        = 100; % in mm
+lens_pitch   = 1400; % in microns choose from 1400, 1500, 1900 and 2000
+pixel_size   = 6.5; % camera pixel size in microns
 pixel_size_sample = pixel_size/(f_TubeLens/f_obj*f_MLA/f_FourierLens); % pixel size in sample space (microns)
 sizeOptic = 10000; % size of MLA optic (in microns)
 mlaRotation = 0;
 mlaCentrePos = [0 0]*(f_TubeLens/f_obj)*(f_MLA/f_FourierLens); % in microns (adjust to suit data plotted on line 100)
 
-z_calib = 1.534; % calibration between optical and physical z
+z_calib = 1.22; % calibration between optical and physical z
 
 save = 'no'; % save output files: 'yes' or 'no'
 
@@ -75,7 +75,7 @@ locs_2d = File.readLocalisationFile(filepath,locs_format,pixel_size_sample);
 
 %% 3. Rotate x and y
 
-theta = (30.8)*pi/180; % change to match the orientation of the MLA
+theta = (2)*pi/180; % change to match the orientation of the MLA
 x = locs_2d(:,2);
 x = x-mean(x);
 y = locs_2d(:,3);
@@ -110,7 +110,7 @@ dTheta = 5; % degrees, will evaluate [-dTheta/2, dTheta/2]
 
 fit_params = {};
 fit_params.frame_range = [lfLocs.minFrame 1000];
-fit_params.max_disparity = 5; % find locs from -5 to 5 um
+fit_params.max_disparity = 3; % find locs from -5 to 5 um
 fit_params.dist_search = 0.5;
 fit_params.angle_tol = 2*pi/180;
 fit_params.threshold = 1;
@@ -142,7 +142,7 @@ correction(:,1:4)
 %% 7. Fit full data set on corrected localisations
 
 fit_params.frame_range = [lfLocs.minFrame lfLocs.maxFrame];
-fit_params.max_disparity = 8;
+fit_params.max_disparity = 3;
 fit_params.dz = 0.5;
 fit_params.angle_tol = 1*pi/180;
 fit_params.threshold = 0.3;
