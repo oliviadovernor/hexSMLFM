@@ -46,8 +46,8 @@ classdef MicroLensArray
                     [x,y] = meshgrid(x,x);
                     dx = repmat([0.5 0],[length(x),ceil(length(x)/2)]);
                     dx = dx(1:length(x),1:length(x));
-                    x1 = x + dx';%+0.5;
-                    y2 = sqrt(3)/2*y;
+                    x1 = x + dx';
+                    y2 = (sqrt(3)/2*y);
                     x = y2;
                     y = x1;
 
