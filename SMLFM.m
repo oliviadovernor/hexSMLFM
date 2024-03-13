@@ -47,17 +47,19 @@ f_TubeLens = 200; % in mm
 f_MLA = 100; % in mm
 lens_pitch = 1400; % in microns
 pixel_size = 6.5; % camera pixel size in microns
-magnification = (f_TubeLens / f_obj * f_MLA / f_FourierLens);%*1.06 red channel mag
+%magnification = (f_TubeLens / f_obj * f_MLA / f_FourierLens);
+%magnification = (f_TubeLens / f_obj * f_MLA / f_FourierLens)*1.08; %red channel mag
+magnification = (f_TubeLens / f_obj * f_MLA / f_FourierLens); %1.15 green channel mag
 pixel_size_sample = (pixel_size / magnification); % pixel size in sample space (microns)
 sizeOptic = 10000; % size of MLA optic (in microns)
 mlaRotation = 0;
 mlaCentrePos = ([0 0] * magnification); % in nm (adjust to suit data plotted on line 100)
 
-z_calib =  1; % calibration between optical and physical 
-offset = 0; %0.05 water  n=1.33, 0.06 oil n1.518
+%z_calib =  1; % calibration between optical and physical 
+%offset = 0.06; %0.05 water  n=1.33, 0.06 oil n1.518
 % Experimental = 1.2287, %1.072 simulation oiloil, 1.15 wateroil
 
-save = 'yes'; % save output files: 'yes' or 'no'
+save = 'no'; % save output files: 'yes' or 'no'
 
 %% 2. Read localisation file
 
@@ -79,7 +81,8 @@ locs_2d = File.readLocalisationFile(filepath, locs_format, pixel_size_sample);
 
 %% 3. Rotate x and y
 
-theta = (30) * pi / 180; % change to match the orientation of the MLA
+theta = (2) * pi / 180; % change to match the orientation of the MLA
+% 32 needed for simulaion, 2 needed for analysis of experimental data
 x = locs_2d(:, 2);
 x = x - mean(x);
 y = locs_2d(:, 3);
@@ -141,7 +144,7 @@ fit_params.max_disparity = 10; % find locs from -5 to 5 um
 fit_params.dist_search = 0.5;
 fit_params.angle_tol = 2 * pi / 180;
 fit_params.threshold = 3;
-fit_params.min_views = 5; % 5
+fit_params.min_views = 4; % 5
 
 mla_rotation = -0 * pi / 180;
 lfLocs = lfLocs.resetFilteredLocs;
@@ -178,7 +181,7 @@ fit_params.max_disparity = 10;%8
 fit_params.dz = 0.5;%0.5 red increase for orange and other colours to 6 
 fit_params.angle_tol = 2 * pi / 180;
 fit_params.threshold = 3;
-fit_params.min_views = 5;
+fit_params.min_views = 4;
 fprintf('Fitting the whole data set')
 [locs3D, fit_data] = Fitting.lightfieldLocalisation(lfLocs.filteredLocs, lfm, fit_params, numWorkers);
 fprintf('locs3D values:\n');
@@ -192,29 +195,36 @@ toc
 
 %% 7. Plotting
 
-%locs3D(:, 3) = (locs3D(:, 3) * z_calib) - offset; % apply z calibration to z coordinates and -50nm offset water 50nm oil 60nm
+% Sort locs3D lowest to highest in order for calibraion correction
+[sorted_locs3D, idx] = sortrows(locs3D, 3);
+locs3D(:, 3) = (locs3D(:, 3) * z_calib);% - offset; % apply z calibration to z coordinates and -50nm offset water 50nm oil 60nm
 % Inputted values
-zValues = linspace(-3, 3, 120);
+stepNo = 9;
+zValues = linspace(-4,4,stepNo);
+%stepNo = 120;
+%zValues = linspace(-3,3,stepNo);
+zFocal = ceil((stepNo/2)); 
 
 % Call the error correction function to get corrected Z positions
-correctedZPN = errorCorrectionFunctions(zValues, locs3D);
+[correctedZPN, fitResults, fitResultsPN] = errorCorrectionFunctions(zValues, locs3D, zFocal);
 
 % Call the main function to plot XY and Z errors
-plotLocalizationErrors(zValues, locs3D);
+plotLocalizationErrors(zValues, sorted_locs3D, zFocal);
 
 % 3D Scatter plot of localizations with corrected Z positions
+figure();
 x = locs3D(:, 1);
 y = locs3D(:, 2);
-locs3D(:, 3) = correctedZPN;
-z = locs3D(:, 3);
-%z = correctedZPN;
+%locs3D(:, 3) = correctedZPN;
+%z = locs3D(:, 3);
+z = correctedZPN;
 n_views = locs3D(:, end-2);
 lateral_err = 1000 * locs3D(:, 4);
 axial_err = 1000 * locs3D(:, 5);
 
 keep = lateral_err < 200 & n_views > 3;
 
-figure; % Use a different figure for the scatter plot with corrected Z
+figure(1); % Use a different figure for the scatter plot with corrected Z
 scatter3(x(keep), y(keep), z(keep), 80, z(keep), '.');
 xlabel('x \mum');
 ylabel('y \mum');

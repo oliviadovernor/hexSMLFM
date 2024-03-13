@@ -1,52 +1,57 @@
-function correctedZPN = errorCorrectionFunctions(zValues, locs3D)
+function [z_calib, offset, CorrectedzPositions, calibration_errors] = errorCorrectionFunctions(zValues, sorted_locs3D, zFocal)
 
     % Extract Z positions
-    zPositions = locs3D(:, 3) - locs3D(60, 3);
-
-    % Calculate total error in micrometers
-    totalErrorZ = abs(zValues(:) - zPositions(:)) * 1000; % Convert to nanometers
-    ZErrorPN = (zValues(:) - zPositions(:)) * 1000; % Convert to nanometers
-    disp(ZErrorPN);
-
-    % Find coefficients for shape-preserving interpolant
-    fitResults = pchip(zValues, totalErrorZ);
-    fitResultsPN = pchip(zValues, ZErrorPN);
+    zPositions = sorted_locs3D(:, 3) - sorted_locs3D(zFocal, 3);
     
-    % Evaluate piecewise polynomial
-    fitArray(:, 1) = ppval(fitResults, zValues);
-
-    %overall z position to be plotted
-    fitArrayPN(:, 1) = ppval(fitResultsPN, zValues);
-
-    % Correct the original Z positions
-    correctedZPositions = (abs(zPositions) + abs(fitArray(:, 1)/1000));
-    correctedZPN = (zPositions) + (fitArrayPN(:, 1)/1000);
-    disp(correctedZPN);
-
-    % Create a new corrected locs3D matrix
-    locs3D_corrected = locs3D;
-    
-    % Replace Z positions in locs3D with corrected values
-    locs3D_corrected(:, 3) = correctedZPN;
-
-    % Extract corrected Z positions
-    correctedZPN = locs3D_corrected(:, 3);
-
-    % Calculate total error in micrometers for corrected data
-    totalErrorZ_corrected = (zValues' - correctedZPN) * 1000;
-
-    % Plotting (optional, you can remove this part if not needed)
-    figure;
-    % Plotting Line for Original Data
-    plot(zValues, totalErrorZ, '^-', 'LineWidth', 1, 'MarkerSize', 3, 'DisplayName', 'Z Error (Original)', 'Color', [0, 0, 1]);
-    hold on;
-    % Plotting Line for Corrected Data
-    plot(zValues, totalErrorZ_corrected, 'o-', 'LineWidth', 1, 'MarkerSize', 3, 'DisplayName', 'Z Error (Corrected)', 'Color', [1, 0, 0]);
-    % Customize Plot
-    xlabel('Axial Range (um)');
-    ylabel('Axial error (nm)');
+    % plot of extracted vs intended z position 
+    % determines calibration factor for original data 
+    figure(3);
+    plot(zPositions, zValues, '^-', 'LineWidth', 1, 'MarkerSize', 3);
+    xlabel('Intended Range (um)');
+    ylabel('Extracted Range (um)');
     title('Z-axis Localization Accuracy');
-    % Customize Legend
-    legend('show');
+    
+    % Perform linear regression
+    coefficients = polyfit(zPositions, zValues, 1);
+    slope = coefficients(1);
+    intercept = coefficients(2);
+    
+    % Evaluate the linear fit
+    fitLine = slope * zPositions + intercept;
+    
+    % Plot the linear fit
+    hold on;
+    plot(zPositions, fitLine, 'r-', 'LineWidth', 2);
+    legend('Data', sprintf('Fit: y = %.4fx + %.4f', slope, intercept));
     hold off;
+
+    z_calib = slope;
+    offset = intercept; 
+
+    % Apply correction
+    CorrectedzPositions = zPositions * z_calib;
+    figure(4);
+    plot(CorrectedzPositions, zValues, '^-', 'LineWidth', 1, 'MarkerSize', 3);
+    xlabel('Intended Range (um)');
+    ylabel('Extracted Range (um)');
+    title('Z-axis Localization Accuracy');
+
+    % Calculate the errors
+    calibration_errors = diff(zValues) - diff(CorrectedzPositions); 
+
+    % Plot the errors
+    figure(5);
+    plot(zPositions(1:end-1), calibration_errors * 1000, 'o-', 'LineWidth', 1, 'MarkerSize', 3); % Convert to nanometers here
+    xlabel('Intended Range (um)');
+    ylabel('Calibration Errors (nm)');
+    title('Calibration Errors');
+        
+    % Check if calibration error is acceptable
+    max_error = max(abs(calibration_errors));
+    if max_error < 0.1
+        fprintf('Calibration successful. Maximum error: %.2f nm\n', max_error * 1000); % Convert to nanometers here
+    else
+        fprintf('Calibration error is too high (%.2f nm). Repeat calibration.\n', max_error * 1000); % Convert to nanometers here
+    end
+    
 end
